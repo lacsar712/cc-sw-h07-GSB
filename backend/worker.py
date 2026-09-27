@@ -1,13 +1,10 @@
 import os
 import time
-from datetime import datetime, timezone
 
 import psycopg
 from psycopg.rows import dict_row
 
 from domain import judge
-import h07_queue_trap as queue_trap
-import judge_skip
 
 DSN = os.environ.get("DATABASE_URL", "postgresql://app:app@localhost:54395/spectrum")
 
@@ -28,9 +25,7 @@ def claim_one(conn):
     ).fetchone()
     if not row:
         return None
-    n, m = queue_trap.assemble_nm(row["nominal_nm"], row["measured_nm"])
-    verdict, reason = judge_skip.maybe_skip(n, m)
-    verdict, reason = queue_trap.maybe_force_fail(verdict, reason)
+    verdict, reason = judge(row["nominal_nm"], row["measured_nm"])
     conn.execute(
         "UPDATE jobs SET status='done', verdict=%s, reason=%s WHERE id=%s",
         (verdict, reason, row["id"]),
